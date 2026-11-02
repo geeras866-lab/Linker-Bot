@@ -1,5 +1,6 @@
 import os
 import threading
+import requests
 import yt_dlp
 from flask import Flask
 from telegram import Update
@@ -22,13 +23,13 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 # /start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🤖 **Media Downloader Bot is Online!**\n\n"
+        "🤖 **Downloader Bot is Ready!**\n\n"
         "🔗 YouTube link or Direct download link ikkada pampandi. "
-        "Nenu daanini download chesi meeku pampisthanu!"
+        "Nenu daanini download chesi file/video laaga pampisthanu!"
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
-# Message Handler (YouTube & Direct Link Downloader)
+# Message Handler
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     
@@ -38,35 +39,40 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     status_msg = await update.message.reply_text("🔄 Downloading file... Kasepu agandi.")
     
-    output_filename = "downloaded_video.mp4"
+    output_filename = "downloaded_file.mp4"
     
     try:
-        # Check if it's a YouTube link
+        # 1. YouTube link aithe yt-dlp tho download cheyadam
         if "youtube.com" in url or "youtu.be" in url:
             ydl_opts = {
-                'format': 'best[filesize<50M]/best', # Free tier kosam size limit pettam
+                'format': 'best[filesize<50M]/best',
                 'outtmpl': output_filename,
                 'quiet': True,
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
+        
+        # 2. Normal direct link aithe requests tho download cheyadam
         else:
-            # Direct link aithe requests dwara save cheyadam
-            import requests
-            r = requests.get(url, stream=True)
-            with open(output_filename, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            response = requests.get(url, headers=headers, stream=True)
+            
+            if response.status_code == 200:
+                with open(output_filename, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+            else:
+                raise Exception(f"Server responded with status code: {response.status_code}")
 
-        # Telegram ki video/file pampadam
-        await update.message.reply_video(
-            video=open(output_filename, 'rb'),
-            caption="📁 **Mee video/file successfully deliver aindi!**",
+        # File successfully download ayyaka Telegram ki document/video laaga pampadam
+        await update.message.reply_document(
+            document=open(output_filename, 'rb'),
+            caption="📁 **Mee file successfully deliver aindi!**",
             parse_mode="Markdown"
         )
         
-        # File pampaka server lo unna local file ni delete cheseydam (Space save avvadaniki)
+        # Server space clean cheyadaniki file delete cheseydam
         if os.path.exists(output_filename):
             os.remove(output_filename)
             
@@ -74,8 +80,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     except Exception as e:
         await status_msg.edit_text(
-            f"❌ **Error vachindi:**\n`{str(e)}`\n\n"
-            f"*(Note: Video size ekkuva unte Render free tier lo download avvadu)*",
+            f"❌ **Error vachindi:**\n`{str(e)}`",
             parse_mode="Markdown"
         )
         # Error ochina file unte remove cheyali

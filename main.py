@@ -21,8 +21,8 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 # /start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "👋 **Welcome to Link-to-File Bot!**\n\n"
-        "🔗 Mee direct download link ikkada pampandi. "
+        "🤖 **Link-to-File Bot is Online!**\n\n"
+        "🔗 Enni GB aina direct download link ikkada pampandi. "
         "Nenu daanini file/video laaga convert chesi ikkade isthanu!"
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
@@ -32,30 +32,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     
     if not url.startswith("http"):
-        await update.message.reply_text("❌ Dayachesi valid URL pampandi.")
+        await update.message.reply_text("❌ Dayachesi valid URL pampandi (http tho start avvali).")
         return
         
     status_msg = await update.message.reply_text("🔄 Processing link... Kasepu agandi.")
     
     try:
-        # Telegram servers direct ga URL nunchi file ni download chesi pampistayi
-        # (Idi direct download links like .mp4, .mkv, .zip lanti vatiki baga pani chestundi)
+        # Telegram servers direct ga URL nunchi file ni download chesi send chestayi
         await update.message.reply_document(
             document=url, 
             caption="📁 **Mee file successfully deliver aindi!**",
             parse_mode="Markdown"
         )
         
-        # Success ayyaka status message ni theesestham
+        # Success ayyaka status message ni delete chestam
         await status_msg.delete()
         
     except Exception as e:
         await status_msg.edit_text(
-            f"❌ **Error vachindi:**\n{str(e)}\n\n"
-            f"*(Note: Link kachithamga direct file download link ayi undali)*"
+            f"❌ **Error vachindi:**\n`{str(e)}`\n\n"
+            f"*(Note: Link kachithamga direct file download link ayi undali)*",
+            parse_mode="Markdown"
         )
 
 def main():
+    if not BOT_TOKEN:
+        print("Error: BOT_TOKEN environment variable is missing!")
+        return
+
     # Flask server ni background lo run chedam
     t = threading.Thread(target=run_flask)
     t.daemon = True
@@ -67,7 +71,7 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Simple Bot is running...")
+    print("Bot is up and running successfully...")
     application.run_polling()
 
 if __name__ == "__main__":

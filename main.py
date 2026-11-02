@@ -13,7 +13,7 @@ app_flask = Flask(__name__)
 
 @app_flask.route("/")
 def home():
-    return "Bot is active and running!"
+    return "Custom Video Bot is active and running!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
@@ -21,21 +21,19 @@ def run_flask():
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
-# /start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🤖 **Pro Video Downloader Bot is Online!**\n\n"
+        "🤖 **Custom Video Converter Bot**\n\n"
         "🔗 HubCDN or Direct video links ikkada pampandi. "
-        "Nenu **Downloading & Uploading rendu processes ki live progress (%)** chupisthanu!"
+        "Nenu daanini live progress bar tho download chesi **direct video file** laaga pampisthanu!"
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
-# Link Handler with Live Progress for Download & Upload
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     
     if "magnet:?" in text.lower():
-        await update.message.reply_text("⚠️ **Note:** Render free server lo Magnet links support avvavu. HubCDN or Direct video links pampandi!")
+        await update.message.reply_text("⚠️ Render free server lo magnet links support avvavu. HubCDN or Direct links pampandi!")
         return
         
     if not "http" in text.lower():
@@ -44,10 +42,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     status_msg = await update.message.reply_text("🔄 Connection establish avtundi... Kasepu agandi.")
     filename = "downloaded_video.mp4"
-    
     last_update_time = [0]
 
-    # 1. Download Progress Hook
     def progress_hook(d):
         if d['status'] == 'downloading':
             current_time = time.time()
@@ -57,7 +53,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 speed = d.get('_speed_str', 'N/A').strip()
                 eta = d.get('_eta_str', 'N/A').strip()
                 
-                # Visual bar (dots/lines) create cheyadam
                 try:
                     p_val = float(percent.replace('%', ''))
                     filled = int(p_val // 10)
@@ -93,7 +88,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         loop = asyncio.get_running_loop()
         
-        # Download Execution
         def download_yt():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([text])
@@ -114,15 +108,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not os.path.exists(filename) or os.path.getsize(filename) == 0:
             raise Exception("File download avvaledu. Link work avtaledu.")
             
-        # 2. Upload Progress Simulation / Status update
         await status_msg.edit_text(
             "📤 **UPLOADING TO TELEGRAM...**\n\n"
             "[■■■■■■■■■■] `100%`\n"
-            "🚀 *Almost done, sending video file...*",
+            "🚀 *Sending video file to chat...*",
             parse_mode="Markdown"
         )
             
-        # Telegram ki video file pampadam
         await update.message.reply_video(
             video=open(filename, 'rb'),
             caption="🎬 **Mee video successfully deliver aindi!**",
@@ -130,7 +122,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             supports_streaming=True
         )
         
-        # Server clean up (Deleting file)
         if os.path.exists(filename):
             os.remove(filename)
             
@@ -146,7 +137,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     if not BOT_TOKEN:
-        print("Error: BOT_TOKEN environment variable is missing!")
+        print("Error: BOT_TOKEN is missing!")
         return
 
     t = threading.Thread(target=run_flask)
@@ -154,11 +145,10 @@ def main():
     t.start()
 
     application = ApplicationBuilder().token(BOT_TOKEN).build()
-
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Advanced progress bot is up and running successfully...")
+    print("Custom Bot is running successfully...")
     application.run_polling()
 
 if __name__ == "__main__":

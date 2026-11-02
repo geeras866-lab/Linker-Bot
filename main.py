@@ -1,7 +1,6 @@
 import os
 import time
 import threading
-import requests
 import yt_dlp
 import libtorrent as lt
 from flask import Flask
@@ -59,9 +58,8 @@ def download_torrent(magnet_link, save_path="downloads"):
 
 # 2. HubCDN / Direct / yt-dlp Supported Link Downloader
 def download_web_video(url, output_filename="downloaded_video.mp4"):
-    # yt-dlp can handle hubcdn, direct links, and hundreds of streaming sites automatically
     ydl_opts = {
-        'format': 'best[filesize<500M]/best', # Render limits kosam size control
+        'format': 'best[filesize<500M]/best',
         'outtmpl': output_filename,
         'quiet': True,
         'no_warnings': True,
@@ -73,9 +71,14 @@ def download_web_video(url, output_filename="downloaded_video.mp4"):
     return output_filename
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Text lo unna extra spaces ni remove cheyadam kosam .strip() vadam
     text = update.message.text.strip()
     
-    if not text.startswith("http") and not text.startswith("magnet:?xt="):
+    # Check if it's a valid link or magnet link
+    is_http = text.lower().startswith("http")
+    is_magnet = text.lower().startswith("magnet:?")
+    
+    if not is_http and not is_magnet:
         await update.message.reply_text("❌ Dayachesi valid Link (HTTP / Magnet) pampandi.")
         return
         
@@ -85,10 +88,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         # A) Magnet Link aithe
-        if text.startswith("magnet:?xt="):
+        if is_magnet:
             downloaded_files = download_torrent(text)
             
-        # B) HubCDN, YouTube, or Direct Links aithe
+        # B) HubCDN, Direct, or yt-dlp supported links aithe
         else:
             filename = download_web_video(text)
             if os.path.exists(filename):
@@ -100,17 +103,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Files anni Telegram ki direct video laaga pampadam
         for file_path in downloaded_files:
             if os.path.exists(file_path):
-                ext = os.path.splitext(file_path)[1].lower()
-                
-                # Video file extension unna, leda general ga video la send cheyali ante
                 await update.message.reply_video(
                     video=open(file_path, 'rb'),
                     caption=f"🎬 **Mee Video Ready:** `{os.path.basename(file_path)}`",
                     parse_mode="Markdown",
-                    supports_streaming=True # Fast play avvadaniki
+                    supports_streaming=True
                 )
                 
-                # Send ayyaka server clean cheyadaniki delete chestam
                 try:
                     os.remove(file_path)
                 except:

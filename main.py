@@ -65,7 +65,6 @@ def extract_hubcdn_video_url(hubcdn_url):
 def clean_and_rename_file(file_path):
     directory, original_filename = os.path.split(file_path)
     
-    # Unwanted watermark/branding words remove cheyadam
     cleaned_name = original_filename
     unwanted_words = ["www.5MovieRulz.company - ", "5MovieRulz", "www.Movierulz.pe - ", "www.Movierulz.com - "]
     for word in unwanted_words:
@@ -73,7 +72,6 @@ def clean_and_rename_file(file_path):
         
     base_name, ext = os.path.splitext(cleaned_name)
     
-    # Cleaned final name with JJ Movies tag
     new_filename = f"Aadarsha Kutumbam - [JJ Movies]{ext}" if "Aadarsha" in base_name else f"{base_name} - [JJ Movies]{ext}"
     new_file_path = os.path.join(directory, new_filename)
     
@@ -165,7 +163,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not os.path.exists(filename) or os.path.getsize(filename) < 100000:
             raise Exception("Real video file download avvaledu. Link expire aindi.")
             
-        # Clean file name and add JJ Movies tag
         final_file_path = clean_and_rename_file(filename)
         final_filename_only = os.path.basename(final_file_path)
             
@@ -218,5 +215,4 @@ def main():
     print("JJ Movies Branded Bot is running successfully...")
     application.run_polling()
 
-if __name__ == "__main__":
-    main()
+main()

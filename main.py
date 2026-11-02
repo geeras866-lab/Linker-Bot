@@ -30,16 +30,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
-# HubCDN page nunchi original video link ni extract chese function
+# HubCDN / HubCDN.wiki page nunchi original video link ni extract chese function
 def extract_hubcdn_video_url(hubcdn_url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://hubcdn.wiki/'
     }
     try:
         response = requests.get(hubcdn_url, headers=headers)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             
+            # 1. Check for video or source tag
             video_tag = soup.find('video')
             if video_tag:
                 source_tag = video_tag.find('source')
@@ -48,6 +50,14 @@ def extract_hubcdn_video_url(hubcdn_url):
                 if video_tag.get('src'):
                     return video_tag['src']
             
+            # 2. Check for direct download buttons or links inside the page
+            for a_tag in soup.find_all('a', href=True):
+                href = a_tag['href']
+                if '.mp4' in href or 'download' in href.lower():
+                    if href.startswith('http'):
+                        return href
+            
+            # 3. Search scripts for mp4 links
             for script in soup.find_all('script'):
                 script_text = script.text
                 if '.mp4' in script_text:
@@ -71,8 +81,10 @@ def clean_and_rename_file(file_path):
         cleaned_name = cleaned_name.replace(word, "")
         
     base_name, ext = os.path.splitext(cleaned_name)
-    
-    new_filename = f"Aadarsha Kutumbam - [JJ Movies]{ext}" if "Aadarsha" in base_name else f"{base_name} - [JJ Movies]{ext}"
+    if not ext:
+        ext = ".mp4"
+        
+    new_filename = f"Aadarsha Kutumbam - [JJ Movies]{ext}" if "Aadarsha" in base_name else f"{base_name.strip()} - [JJ Movies]{ext}"
     new_file_path = os.path.join(directory, new_filename)
     
     if os.path.exists(file_path):
@@ -93,10 +105,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Dayachesi valid video link pampandi.")
         return
         
-    status_msg = await update.message.reply_text("🔄 Link parse avtundi... Kasepu agandi.")
+    status_msg = await update.message.reply_text("🔄 HubCDN link parse avtundi... Kasepu agandi.")
     filename = "downloaded_video.mp4"
     last_update_time = [0]
 
+    # Extract real downloadable link from HubCDN
     actual_video_url = extract_hubcdn_video_url(text)
 
     def progress_hook(d):
@@ -150,6 +163,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await loop.run_in_executor(None, download_yt)
         except Exception as yt_err:
+            # Fallback direct requests stream if yt-dlp fails on the extracted link
             headers = ydl_opts['http_headers']
             r = requests.get(actual_video_url, headers=headers, stream=True)
             if r.status_code == 200:
@@ -161,7 +175,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 raise yt_err
 
         if not os.path.exists(filename) or os.path.getsize(filename) < 100000:
-            raise Exception("Real video file download avvaledu. Link expire aindi.")
+            raise Exception("Real video file download avvaledu. Link valid kaadu leda expire aindi.")
             
         final_file_path = clean_and_rename_file(filename)
         final_filename_only = os.path.basename(final_file_path)
@@ -215,4 +229,5 @@ def main():
     print("JJ Movies Branded Bot is running successfully...")
     application.run_polling()
 
-main()
+if __name__ == "__main__":
+    main()

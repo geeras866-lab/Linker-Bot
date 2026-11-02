@@ -15,18 +15,19 @@ def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app_flask.run(host="0.0.0.0", port=port)
 
-# Kevalam Bot Token okkate chalu
+# Bot Token from Environment Variables
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
-# /start command ichchinappudu vache message
+# /start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "👋 **Welcome to Link-to-File Bot!**\n\n"
-        "Nenu mee download links ni process chesi, direct ga file ni ikkade (chat lone) isthanu.\n\n"
-        "🔗 **Emaina link ikkada send cheyandi!**"
+        "🔗 Mee direct download link ikkada pampandi. "
+        "Nenu daanini file/video laaga convert chesi ikkade isthanu!"
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
+# Link handler (File download & send logic)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     
@@ -37,13 +38,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_msg = await update.message.reply_text("🔄 Processing link... Kasepu agandi.")
     
     try:
-        # Ikkada link nunchi file process chesi user chat lone send cheyachu
-        # Example: await update.message.reply_document(document=url, caption="Mee file idi!")
+        # Telegram servers direct ga URL nunchi file ni download chesi pampistayi
+        # (Idi direct download links like .mp4, .mkv, .zip lanti vatiki baga pani chestundi)
+        await update.message.reply_document(
+            document=url, 
+            caption="📁 **Mee file successfully deliver aindi!**",
+            parse_mode="Markdown"
+        )
         
-        await status_msg.edit_text("✅ File successfully processed!")
+        # Success ayyaka status message ni theesestham
+        await status_msg.delete()
         
     except Exception as e:
-        await status_msg.edit_text(f"❌ Error vachindi: {str(e)}")
+        await status_msg.edit_text(
+            f"❌ **Error vachindi:**\n{str(e)}\n\n"
+            f"*(Note: Link kachithamga direct file download link ayi undali)*"
+        )
 
 def main():
     # Flask server ni background lo run chedam

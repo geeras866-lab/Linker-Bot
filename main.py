@@ -71,14 +71,13 @@ def download_web_video(url, output_filename="downloaded_video.mp4"):
     return output_filename
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Text lo unna extra spaces ni remove cheyadam kosam .strip() vadam
     text = update.message.text.strip()
     
-    # Check if it's a valid link or magnet link
-    is_http = text.lower().startswith("http")
-    is_magnet = text.lower().startswith("magnet:?")
+    # Check if text contains magnet or http anywhere (Telegram formatting bypass kosam)
+    is_magnet = "magnet:?" in text.lower() or "xt=urn:btih:" in text.lower()
+    is_http = "http" in text.lower()
     
-    if not is_http and not is_magnet:
+    if not is_magnet and not is_http:
         await update.message.reply_text("❌ Dayachesi valid Link (HTTP / Magnet) pampandi.")
         return
         
@@ -89,7 +88,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # A) Magnet Link aithe
         if is_magnet:
-            downloaded_files = download_torrent(text)
+            # Clean text to ensure correct magnet URI extraction
+            if "magnet:?" in text:
+                magnet_uri = text[text.find("magnet:?"):].strip()
+            else:
+                magnet_uri = text
+            downloaded_files = download_torrent(magnet_uri)
             
         # B) HubCDN, Direct, or yt-dlp supported links aithe
         else:
@@ -119,7 +123,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     except Exception as e:
         await status_msg.edit_text(
-            f"❌ **Error vachindi:**\n`{str(e)}`\n\n*(Note: Render free tier limits valla file size ekkuva unte download avvadu)*",
+            f"❌ **Error vachindi:**\n`{str(e)}`",
             parse_mode="Markdown"
         )
 

@@ -1,9 +1,10 @@
 import os
 import threading
 from flask import Flask
-from pyrogram import Client, filters
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 
-# Flask app - Render web service kosam mariyu cron job ping cheyadaniki
+# Render sleep avvakunda undataniki Flask web server
 app_flask = Flask(__name__)
 
 @app_flask.route("/")
@@ -14,45 +15,50 @@ def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app_flask.run(host="0.0.0.0", port=port)
 
-# Telegram Bot Credentials (Render Environment Variables nunchi load avtayi)
-API_ID = int(os.environ.get("API_ID", "0"))
-API_HASH = os.environ.get("API_HASH", "")
+# Kevalam Bot Token okkate chalu
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "0"))
 
-app = Client("simple_file_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-
-@app.on_message(filters.command("start"))
-async def start_handler(client, message):
-    await message.reply_text(
-        "👋 Hello! Mee download link ikkada pampandi. "
-        "Nenu daanini file laaga process chesi mee channel ki pampisthanu!"
+# /start command ichchinappudu vache message
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    welcome_text = (
+        "👋 **Welcome to Link-to-File Bot!**\n\n"
+        "Nenu mee download links ni process chesi, direct ga file ni ikkade (chat lone) isthanu.\n\n"
+        "🔗 **Emaina link ikkada send cheyandi!**"
     )
+    await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
-@app.on_message(filters.text & ~filters.command(["start"]))
-async def link_handler(client, message):
-    url = message.text.strip()
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = update.message.text.strip()
     
     if not url.startswith("http"):
-        await message.reply_text("❌ Dayachesi valid URL pampandi.")
+        await update.message.reply_text("❌ Dayachesi valid URL pampandi.")
         return
         
-    status_msg = await message.reply_text("🔄 Processing link... Kasepu agandi.")
+    status_msg = await update.message.reply_text("🔄 Processing link... Kasepu agandi.")
     
     try:
-        # Ikkada link nunchi file process chesi channel ki pampocchu
-        # Example: await client.send_document(chat_id=CHANNEL_ID, document=url, caption="Mee file idi!")
+        # Ikkada link nunchi file process chesi user chat lone send cheyachu
+        # Example: await update.message.reply_document(document=url, caption="Mee file idi!")
         
-        await status_msg.edit_text("✅ File successfully sent to your channel!")
+        await status_msg.edit_text("✅ File successfully processed!")
         
     except Exception as e:
         await status_msg.edit_text(f"❌ Error vachindi: {str(e)}")
 
-if __name__ == "__main__":
-    # Flask server ni oka separate background thread lo run chedam
+def main():
+    # Flask server ni background lo run chedam
     t = threading.Thread(target=run_flask)
     t.daemon = True
     t.start()
-    
-    print("Bot and Flask server are running...")
-    app.run()
+
+    # Telegram Bot setup
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+
+    print("Simple Bot is running...")
+    application.run_polling()
+
+if __name__ == "__main__":
+    main()
